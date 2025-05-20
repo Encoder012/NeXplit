@@ -1,0 +1,202 @@
+module 0x1::subscription {
+    use sui::object;
+    use sui::tx_context;
+    use sui::transfer;
+    use sui::dynamic_object_field as dof;
+    use sui::coin;
+    use sui::clock;
+    use std::string;
+    use std::vector;
+
+    const E_NOT_SELLER: u64 = 1;
+    const E_NOT_BUYER: u64 = 2;
+    const E_INVALID_INTERVAL: u64 = 3;
+    const E_PRICE_MISMATCH: u64 = 4;
+    const E_TOO_EARLY: u64 = 5;
+    const E_ALREADY_CLAIMED: u64 = 6;
+    const E_ALREADY_DISPUTED: u64 = 7;
+    const E_DISPUTED: u64 = 8;
+    const E_INVALID_PERCENT: u64 = 9;
+    const E_MAX_BUYERS_REACHED: u64 = 10;
+
+    /// Seller's Subscription NFT
+    public struct SubscriptionNFT has key, store {
+        id: UID,
+        name: string::String,
+        description: string::String,
+        url: string::String,
+        photo_url: string::String,
+
+        seller: address,
+        total_price: u64,
+        max_buyers: u64,
+    }
+
+    /// Each buyer's participation proof NFT
+    public struct ParticipationNFT has key, store {
+        id: UID,
+        subscription_id: object::ID,
+        buyer: address,
+    }
+
+    /// Agreement object holding escrow, buyers, etc.
+    public struct Subscription has key, store {
+        id: UID,
+        subscription_reference: string::String,
+        access_duration: u64,
+        total_price: u64,
+
+        seller: address,
+        buyers: vector<address>,
+
+        start_time: u64,
+        claimed_percent: u64,
+        dispute: bool,
+        escrow_id: object::ID,
+        max_buyers: u64,
+    }
+
+    // ==== View functions for NFT metadata ====
+
+    public fun name(sub: &SubscriptionNFT): &string::String {
+        &sub.name
+    }
+
+    public fun description(sub: &SubscriptionNFT): &string::String {
+        &sub.description
+    }
+
+    public fun url(sub: &SubscriptionNFT): &string::String {
+        &sub.url
+    }
+
+    // ==== Seller creates SubscriptionNFT ====
+    public entry fun create_subscription_nft(
+        name: vector<u8>,
+        description: vector<u8>,
+        url: vector<u8>,
+        photo_url: vector<u8>,
+        total_price: u64,
+        max_buyers: u64,
+        ctx: &mut tx_context::TxContext
+    ) {
+        let seller = tx_context::sender(ctx);
+        let nft = SubscriptionNFT {
+            id: object::new(ctx),
+            name: string::utf8(name),
+            description: string::utf8(description),
+            url: string::utf8(url),
+            photo_url: string::utf8(photo_url),
+            seller,
+            total_price,
+            max_buyers,
+        };
+        transfer::public_transfer(nft, seller);
+    }
+
+    /// Seller starts a Subscription (escrow deal) for SubscriptionNFT
+    public entry fun create_subscription<T: key>(
+        subscription_reference: vector<u8>,
+        access_duration: u64,
+        subscription_nft: SubscriptionNFT,
+        mut coin: coin::Coin<T>,
+        ctx: &mut tx_context::TxContext
+    ) {
+        let seller = tx_context::sender(ctx);
+        let price = subscription_nft.total_price;
+        let actual_value = coin::value(&coin);
+        assert!(price == actual_value, E_PRICE_MISMATCH);
+
+        let start_ms = clock::timestamp_ms(&clock::Clock);
+
+        let mut sub = Subscription {
+            id: object::new(ctx),
+            subscription_reference: string::utf8(subscription_reference),
+            access_duration,
+            total_price: price,
+            seller,
+            buyers: vector::empty(),
+            start_time: start_ms,
+            claimed_percent: 0,
+            dispute: false,
+            escrow_id: object::id(&coin),
+            max_buyers: subscription_nft.max_buyers,
+        };
+
+        dof::add(&mut sub.id, object::id(&coin), coin);
+        transfer::public_transfer(sub, seller);
+    }
+
+    /// Buyer joins subscription and gets ParticipationNFT
+    public entry fun join_subscription<coinType>(
+        sub: &mut Subscription,
+        subscription_id: object::ID,
+        mut coin: coin::Coin<coinType>,
+        ctx: &mut tx_context::TxContext
+    ) {
+        let buyer = tx_context::sender(ctx);
+        assert!(vector::length(&sub.buyers) < sub.max_buyers, E_MAX_BUYERS_REACHED);
+
+        let share_price = sub.total_price / sub.max_buyers;
+        let actual_value = coin::value(&coin);
+        assert!(actual_value == share_price, E_PRICE_MISMATCH);
+
+        let mut escrow_coin = dof::remove(&mut sub.id, sub.escrow_id);
+        escrow_coin = coin::join(escrow_coin, coin);
+        dof::add(&mut sub.id, sub.escrow_id, escrow_coin);
+
+        vector::push_back(&mut sub.buyers, buyer);
+
+        let part_nft = ParticipationNFT {
+            id: object::new(ctx),
+            subscription_id,
+            buyer,
+        };
+        transfer::public_transfer(part_nft, buyer);
+    }
+
+    /// Seller claims percent of payment (up to elapsed)
+    public entry fun claim_subscription_payment<coinType>(
+        sub: &mut Subscription,
+        claim_percent: u64,
+        ctx: &mut tx_context::TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        assert!(caller == sub.seller, E_NOT_SELLER);
+        assert!(!sub.dispute, E_DISPUTED);
+        assert!(claim_percent <= 100, E_INVALID_PERCENT);
+        assert!(claim_percent > sub.claimed_percent, E_ALREADY_CLAIMED);
+
+        let now = clock::timestamp_ms(&clock::Clock);
+        let total_duration_ms = sub.access_duration * 1000;
+        let elapsed = now - sub.start_time;
+        let elapsed_percent = if (elapsed >= total_duration_ms) {
+            100
+        } else {
+            (elapsed * 100) / total_duration_ms
+        };
+        assert!(claim_percent <= elapsed_percent, E_TOO_EARLY);
+
+        let percent_delta = claim_percent - sub.claimed_percent;
+        let amount = (sub.total_price * percent_delta) / 100;
+
+        let mut escrow_coin = dof::remove(&mut sub.id, sub.escrow_id);
+        let coin_part: coin::Coin<coinType> = coin::split(&mut escrow_coin, amount, ctx);
+        transfer::public_transfer(coin_part, caller);
+        dof::add(&mut sub.id, sub.escrow_id, escrow_coin);
+
+        sub.claimed_percent = claim_percent;
+    }
+
+    /// Buyer raises dispute
+    public entry fun raise_subscription_dispute(
+        sub: &mut Subscription,
+        ctx: &mut tx_context::TxContext
+    ) {
+        let caller = tx_context::sender(ctx);
+        assert!(vector::contains(&sub.buyers, &caller), E_NOT_BUYER);
+        assert!(!sub.dispute, E_ALREADY_DISPUTED);
+        assert!(sub.claimed_percent < 100, E_ALREADY_CLAIMED);
+        sub.dispute = true;
+    }
+}
