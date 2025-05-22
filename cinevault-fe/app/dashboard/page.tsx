@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const handleConnect = (walletInfo: any) => {
 
     try {
+      console.log(walletInfo.name);
       select(walletInfo.name);
 
     } catch (error) {
