@@ -286,7 +286,7 @@ export default function MarketplacePage() {
                 </CardContent>
                 <CardFooter className="border-t p-6">
                   <Button className="w-full">
-                    View Details
+                    <Link href={`./marketplace/listing-${service.id}`} > View Details</Link>
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </CardFooter>
@@ -331,8 +331,8 @@ const streamingServices = [
     name: "Netflix Premium",
     category: "Movies & TV",
     image: "/placeholder.svg?height=400&width=600",
-    rating: 4.9,
-    reviews: 128,
+    rating: 0,
+    reviews: 0,
     price: 17.99,
     duration: "6 months",
     description: "Share a Netflix Premium account with 4K UHD and multiple profiles.",

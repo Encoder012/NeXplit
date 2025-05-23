@@ -27,6 +27,9 @@ import {
 } from "@suiet/wallet-kit";
 import { BlockchainService } from "@/lib/blockchain-service"
 
+import { use } from 'react';
+import React from "react"
+
 interface SplitAgreement {
   id: string
   name: string
@@ -62,7 +65,7 @@ interface SplitAgreement {
   nftId: string
 }
 
-export default function SplitDetailPage({ params }: { params: { id: string } }) {
+export default function SplitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth()
   const wallet = useWallet()
   const { toast } = useToast()
@@ -72,6 +75,7 @@ export default function SplitDetailPage({ params }: { params: { id: string } }) 
   const [isClaimingPayment, setIsClaimingPayment] = useState(false)
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [blockchainService] = useState(() => new BlockchainService())
+  const { id } = use(params);
 
   // Set wallet in blockchain service
   useEffect(() => {
@@ -87,14 +91,14 @@ export default function SplitDetailPage({ params }: { params: { id: string } }) 
 
         // Mock data
         const mockAgreement: SplitAgreement = {
-          id: params.id,
+          id: id,
           name: "Netflix Premium",
           service: "netflix",
           image: "/placeholder.svg?height=300&width=600&text=Netflix",
           seller: {
             id: "user_123",
-            name: "Alex Johnson",
-            walletAddress: "0x71C...9E3F",
+            name: "Krishna Aggarwal",
+            walletAddress: "0x2cb...d227",
           },
           buyer: {
             id: "user_456",
@@ -146,7 +150,7 @@ export default function SplitDetailPage({ params }: { params: { id: string } }) 
     }
 
     fetchAgreement()
-  }, [params.id, toast, router])
+  }, [id, toast, router])
 
   const handleClaimPayment = async () => {
     if (!agreement) return

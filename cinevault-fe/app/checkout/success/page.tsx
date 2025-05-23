@@ -17,15 +17,15 @@ export default function CheckoutSuccessPage() {
 
   const [countdown, setCountdown] = useState(5)
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-      return () => clearTimeout(timer)
-    } else {
-      // Auto-redirect after countdown
-      router.push("/account-access")
-    }
-  }, [countdown, router])
+  // useEffect(() => {
+  //   if (countdown > 0) {
+  //     const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+  //     return () => clearTimeout(timer)
+  //   } else {
+  //     // Auto-redirect after countdown
+  //     router.push("/account-access")
+  //   }
+  // }, [countdown, router])
 
   return (
     <div className="container max-w-lg py-12">
@@ -80,7 +80,7 @@ export default function CheckoutSuccessPage() {
       <BlockchainStatus txId={txId || undefined} />
 
       <div className="mt-6 text-center">
-        <p className="text-muted-foreground">Redirecting to Account Access in {countdown} seconds...</p>
+        {/* <p className="text-muted-foreground">Redirecting to Account Access in {countdown} seconds...</p> */}
         <div className="flex justify-center gap-4 mt-4">
           <Button variant="ghost" asChild>
             <Link href="/dashboard">Back to Dashboard</Link>

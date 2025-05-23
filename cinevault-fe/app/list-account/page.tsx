@@ -32,6 +32,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/components/auth-provider";
 import { BlockchainService } from "@/lib/blockchain-service";
 import { useWallet } from "@suiet/wallet-kit";
+import { createListing } from "@/utils/seller";
 
 export default function ListAccountPage() {
   const [step, setStep] = useState(1);
@@ -42,7 +43,7 @@ export default function ListAccountPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [blockchainService] = useState(() => new BlockchainService());
-  const { select, connected} = useWallet();
+  const { select, connected } = useWallet();
 
   // Set wallet in blockchain service
   useEffect(() => {
@@ -101,7 +102,7 @@ export default function ListAccountPage() {
         //   variant: "destructive",
         // });
         // setIsSubmitting(false);
-        
+
         //Hardcoding of the connecting of the slush wallet if not connected
         const walletName = "Slush"
         select(walletName);
@@ -116,13 +117,25 @@ export default function ListAccountPage() {
 
 
       //add the logic for allowlist, seal and platformNFT
-      
+
 
       // // Store the listing data in your backend/database
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
+      const { allowlistId, platformId } = await createListing(
+        wallet,
+        formData.name,
+        formData.plan,
+        BigInt(Math.floor(parseFloat(formData.pricePerMonth))),
+        formData.duration[0],
+        formData.concurrentUsers,
+        {
+          email: formData.email,
+          password: formData.password
+        }
+      )
+
       // ✅ Store data in backend
-      const platformId = "1"
       const payload = {
         ...formData,
         name: platformName, // Replace name with resolved platform name
@@ -131,17 +144,19 @@ export default function ListAccountPage() {
         blockchainPlatformId: platformId || "1", // Optional: store platform ID from blockchain
       };
 
-      const response = await fetch("http://localhost:8000/api/accounts/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
 
-      if (!response.ok) {
-        throw new Error("Failed to save listing to backend.");
-      }
+
+      // const response = await fetch("http://localhost:8000/api/accounts/add", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(payload),
+      // });
+
+      // if (!response.ok) {
+      //   throw new Error("Failed to save listing to backend.");
+      // }
 
       toast({
         title: "Listing created successfully",
@@ -373,20 +388,20 @@ export default function ListAccountPage() {
                     {(selectedService === "netflix" ||
                       selectedService === "disney" ||
                       selectedService === "hbo") && (
-                      <div className="space-y-2">
-                        <Label htmlFor="profile-pin">
-                          Profile PIN (if applicable)
-                        </Label>
-                        <Input
-                          id="profile-pin"
-                          type="password"
-                          value={formData.profilePin}
-                          onChange={(e) =>
-                            updateFormData("profilePin", e.target.value)
-                          }
-                        />
-                      </div>
-                    )}
+                        <div className="space-y-2">
+                          <Label htmlFor="profile-pin">
+                            Profile PIN (if applicable)
+                          </Label>
+                          <Input
+                            id="profile-pin"
+                            type="password"
+                            value={formData.profilePin}
+                            onChange={(e) =>
+                              updateFormData("profilePin", e.target.value)
+                            }
+                          />
+                        </div>
+                      )}
 
                     <div className="space-y-2">
                       <Label>Access Restrictions</Label>
@@ -516,11 +531,10 @@ export default function ListAccountPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                        step >= 1
-                          ? "bg-primary text-primary-foreground"
-                          : "border bg-muted"
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${step >= 1
+                        ? "bg-primary text-primary-foreground"
+                        : "border bg-muted"
+                        }`}
                     >
                       {step > 1 ? <Check className="h-4 w-4" /> : "1"}
                     </div>
@@ -534,11 +548,10 @@ export default function ListAccountPage() {
                   <Separator />
                   <div className="flex items-center gap-4">
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                        step >= 2
-                          ? "bg-primary text-primary-foreground"
-                          : "border bg-muted"
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${step >= 2
+                        ? "bg-primary text-primary-foreground"
+                        : "border bg-muted"
+                        }`}
                     >
                       {step > 2 ? <Check className="h-4 w-4" /> : "2"}
                     </div>

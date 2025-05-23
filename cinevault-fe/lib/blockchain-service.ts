@@ -37,7 +37,7 @@ export class BlockchainService {
     duration: number,
     maxUsers: number,
   ) {
-    if (!this.wallet || !this.wallet.wallet?.connected) {
+    if (!this.wallet || !this.wallet?.connected) {
       throw new Error("Wallet not connected")
     }
 
@@ -72,41 +72,91 @@ export class BlockchainService {
   }
 
   async purchaseSubscription(platformId: string, duration: number, amount: number) {
-    if (!this.wallet || !this.wallet.wallet?.connected) {
-      throw new Error("Wallet not connected")
+    if (!this.wallet || !this.wallet.connected) {
+      throw new Error("Wallet not connected");
     }
 
     try {
-      // In a real implementation, this would interact with the blockchain
-      // Mock implementation for demo purposes
-      console.log("Purchasing subscription on blockchain:", {
-        platformId,
-        duration,
-        amount,
-      })
+      // Step 1: Construct a mock payment authorization message
+      const paymentMessage = `Authorize payment of ${amount} SUI for subscription: ${platformId}, duration: ${duration} days`;
+      const encodedMessage = new TextEncoder().encode(paymentMessage);
 
-      // Simulate blockchain delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      console.log("Signing message for payment authorization:", paymentMessage);
 
-      // Generate mock IDs
-      const subscriptionId = `subscription_${Math.floor(Math.random() * 1000000)}`
-      const txId = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`
-      const nftId = Math.floor(Math.random() * 10000)
+      // Step 2: Sign the message with the connected wallet
+      let signature: string;
+
+      // If wallet supports signPersonalMessage (as per Suiet), use it
+      if ("signPersonalMessage" in this.wallet && typeof this.wallet.signPersonalMessage === "function") {
+        const { signature: signedSignature } = await this.wallet.signPersonalMessage({
+          message: encodedMessage,
+        });
+        signature = signedSignature;
+        console.log("Signature from wallet:", signature);
+      } else {
+        // Fallback mock signature
+        signature = `mock_signature_${Math.random().toString(36).substring(2, 12)}`;
+        console.log("Mock Signature:", signature);
+      }
+
+      // Step 3: Simulate blockchain delay (mocking on-chain interaction)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Step 4: Simulate returning success data
+      const subscriptionId = `subscription_${Math.floor(Math.random() * 1000000)}`;
+      const txId = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+      const nftId = Math.floor(Math.random() * 10000);
 
       return {
         success: true,
         subscriptionId,
         txId,
         nftId,
-      }
+        signedMessage: signature,
+      };
     } catch (error) {
-      console.error("Error purchasing subscription:", error)
-      throw new Error("Failed to purchase subscription on blockchain")
+      console.error("Error purchasing subscription:", error);
+      throw new Error("Failed to purchase subscription on blockchain");
     }
   }
 
+
+  // async purchaseSubscription(platformId: string, duration: number, amount: number) {
+  //   if (!this.wallet || !this.wallet?.connected) {
+  //     throw new Error("Wallet not connected")
+  //   }
+
+  //   try {
+  //     // In a real implementation, this would interact with the blockchain
+  //     // Mock implementation for demo purposes
+  //     console.log("Purchasing subscription on blockchain:", {
+  //       platformId,
+  //       duration,
+  //       amount,
+  //     })
+
+  //     // Simulate blockchain delay
+  //     await new Promise((resolve) => setTimeout(resolve, 2000))
+
+  //     // Generate mock IDs
+  //     const subscriptionId = `subscription_${Math.floor(Math.random() * 1000000)}`
+  //     const txId = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`
+  //     const nftId = Math.floor(Math.random() * 10000)
+
+  //     return {
+  //       success: true,
+  //       subscriptionId,
+  //       txId,
+  //       nftId,
+  //     }
+  //   } catch (error) {
+  //     console.error("Error purchasing subscription:", error)
+  //     throw new Error("Failed to purchase subscription on blockchain")
+  //   }
+  // }
+
   async claimPayment(subscriptionId: string, platformId: string) {
-    if (!this.wallet || !this.wallet.wallet?.connected) {
+    if (!this.wallet || !this.wallet?.connected) {
       throw new Error("Wallet not connected")
     }
 
@@ -135,7 +185,7 @@ export class BlockchainService {
   }
 
   async cancelSubscription(subscriptionId: string) {
-    if (!this.wallet || !this.wallet.wallet?.connected) {
+    if (!this.wallet || !this.wallet?.connected) {
       throw new Error("Wallet not connected")
     }
 

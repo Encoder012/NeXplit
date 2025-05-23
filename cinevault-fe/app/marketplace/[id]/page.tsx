@@ -1,6 +1,7 @@
 "use client"
 
 import { Label } from "@/components/ui/label"
+import React from 'react'
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -15,10 +16,18 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
-import { WalletConnect } from "@/components/wallet-connect"
 import blockchainService from "@/lib/blockchain-service"
+import { use } from 'react'
+import {
+  ConnectButton,
+  WalletProvider,
+  useWallet,
+  addressEllipsis,
+  ConnectModal,
+  useAccountBalance
+} from "@suiet/wallet-kit";
 
-export default function ListingDetailPage({ params }: { params: { id: string } }) {
+export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -26,6 +35,18 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   const [listing, setListing] = useState<any>(null)
   const [showWalletModal, setShowWalletModal] = useState(false)
   const [selectedDuration, setSelectedDuration] = useState(3)
+
+
+  const { select, configuredWallets, detectedWallets } = useWallet();
+
+  const handleConnect = async (walletInfo: any) => {
+
+    console.log(walletInfo.name);
+    await select(walletInfo.name);
+
+  }
+
+  const { id } = React.use(params) as { id: string };
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -36,12 +57,12 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
 
         // Mock data for the listing
         setListing({
-          id: params.id,
+          id: id,
           name: "Netflix Premium",
           category: "Movies & TV",
           image: "/placeholder.svg?height=400&width=600",
-          rating: 4.9,
-          reviews: 128,
+          rating: 0,
+          reviews: 0,
           price: 17.99,
           duration: "6 months",
           description:
@@ -49,11 +70,11 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           features: ["4K UHD", "Multiple Profiles", "No Ads", "Downloads"],
           seller: {
             id: "user_123",
-            name: "Alex Johnson",
+            name: "Krishna Aggarwal",
             rating: 4.8,
             listings: 12,
             completedSplits: 45,
-            joinedDate: "January 2024",
+            joinedDate: "January 2025",
             avatar: "/placeholder.svg?height=100&width=100",
           },
           details: {
@@ -78,7 +99,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     }
 
     fetchListing()
-  }, [params.id, toast])
+  }, [id, toast])
 
   const handlePurchase = () => {
     if (!user?.walletConnected) {
@@ -90,7 +111,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     blockchainService.connectWallet(user.walletAddress || "")
 
     // Proceed with purchase - this will be handled in the checkout page
-    router.push(`/checkout/${params.id}?duration=${selectedDuration}`)
+    router.push(`/checkout/${id}?duration=${selectedDuration}`)
   }
 
   if (isLoading || !listing) {
@@ -353,11 +374,10 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                             {Array.from({ length: 5 }).map((_, i) => (
                               <Star
                                 key={i}
-                                className={`h-4 w-4 ${
-                                  i < review.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "fill-muted text-muted-foreground"
-                                }`}
+                                className={`h-4 w-4 ${i < review.rating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "fill-muted text-muted-foreground"
+                                  }`}
                               />
                             ))}
                           </div>
@@ -563,13 +583,39 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           {showWalletModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
               <div className="max-w-md">
-                <WalletConnect
+                <WalletProvider>
+                  <div className="grid grid-cols-4 gap-3 ">
+
+                    {[...detectedWallets, ...configuredWallets].map((walletInfo) => (
+
+                      <button
+
+                        className="size-10 aspect-square gap-1"
+                        key={walletInfo.name}
+                        // onClick={() => handleConnect(walletInfo.name)}
+                        onClick={async () => {
+                          await handleConnect(walletInfo).then(() => {
+                            setShowWalletModal(false)
+                            // Proceed with purchase after wallet connection
+                            router.push(`/checkout/${id}?duration=${selectedDuration}`)
+
+                          })
+
+                        }}
+                      >
+                        <img src={walletInfo.iconUrl} alt={walletInfo.name} />
+                      </button>
+                    ))}
+
+                  </div>
+                </WalletProvider>
+                {/* <WalletConnect
                   onSuccess={() => {
                     setShowWalletModal(false)
                     // Proceed with purchase after wallet connection
                     router.push(`/checkout/${params.id}?duration=${selectedDuration}`)
                   }}
-                />
+                /> */}
                 <Button variant="ghost" className="mt-4 w-full" onClick={() => setShowWalletModal(false)}>
                   Cancel
                 </Button>

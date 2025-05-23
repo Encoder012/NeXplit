@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Clock, DollarSign, Plus, Tv, User, Wallet } from "lucide-react"
+import { ArrowRight, Clock, Divide, DollarSign, Plus, Tv, User, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +17,8 @@ import {
   WalletProvider,
   useWallet,
   addressEllipsis,
-  ConnectModal
+  ConnectModal,
+  useAccountBalance
 } from "@suiet/wallet-kit";
 import { Split } from "lucide-react"
 
@@ -66,25 +67,14 @@ export default function DashboardPage() {
 
   const handleConnect = (walletInfo: any) => {
 
-    try {
-      console.log(walletInfo.name);
-      select(walletInfo.name);
+    console.log(walletInfo.name);
+    select(walletInfo.name);
 
-    } catch (error) {
-      const browserExtensionUrl = walletInfo.downloadUrl?.browserExtension;
-      alert("hello world")
-
-      if (browserExtensionUrl && typeof browserExtensionUrl === 'string') {
-        window.location.href = browserExtensionUrl;
-      } else {
-        // Fallback if no URL is available
-        window.location.href = '/error';
-      }
-    }
   }
 
   const [openModal, setOpenModal] = useState(false);
   const { connected, account } = useWallet();
+  const { balance } = useAccountBalance();
 
 
   useEffect(() => {
@@ -96,20 +86,20 @@ export default function DashboardPage() {
 
         // Mock data
         const mockActiveSplits: ActiveSplit[] = [
-          {
-            id: "split_1",
-            name: "Netflix Premium",
-            service: "netflix",
-            image: "/placeholder.svg?height=200&width=300&text=Netflix",
-            role: "seller",
-            price: 17.99,
-            startDate: "2025-04-15T10:30:00Z",
-            endDate: "2025-07-15T10:30:00Z",
-            progress: 35,
-            status: "active",
-            nextPayment: "2025-05-30T00:00:00Z",
-            nextPaymentAmount: 17.99,
-          },
+          // {
+          //   id: "split_1",
+          //   name: "Netflix Premium",
+          //   service: "netflix",
+          //   image: "/placeholder.svg?height=200&width=300&text=Netflix",
+          //   role: "seller",
+          //   price: 17.99,
+          //   startDate: "2025-04-15T10:30:00Z",
+          //   endDate: "2025-07-15T10:30:00Z",
+          //   progress: 35,
+          //   status: "active",
+          //   nextPayment: "2025-05-30T00:00:00Z",
+          //   nextPaymentAmount: 17.99,
+          // },
           {
             id: "split_2",
             name: "Disney+ Bundle",
@@ -305,7 +295,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Balance</p>
-                    <p className="text-xl font-bold">static 2 SUI</p>
+                    <p className="text-xl font-bold"> {balance ? parseInt(balance.toString()) / Math.pow(10, 9) : 0} SUI </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={wallet?.disconnect}>
                     Disconnect

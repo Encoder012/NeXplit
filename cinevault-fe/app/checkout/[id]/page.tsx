@@ -17,12 +17,22 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
-import { WalletConnect } from "@/components/wallet-connect"
+// import { WalletConnect } from "@/components/wallet-connect"
 import blockchainService from "@/lib/blockchain-service"
+import { use } from "react"
+import {
+  ConnectButton,
+  useWallet,
+  WalletProvider,
+  addressEllipsis,
+  ConnectModal,
+  useAccountBalance
+} from "@suiet/wallet-kit";
 
-export default function CheckoutPage({ params }: { params: { id: string } }) {
+export default function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth()
   const { toast } = useToast()
+  const wallet = useWallet()
   const router = useRouter()
   const searchParams = useSearchParams()
   const duration = searchParams.get("duration") || "3"
@@ -31,6 +41,18 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [listing, setListing] = useState<any>(null)
   const [paymentMethod, setPaymentMethod] = useState("crypto")
+
+  const { id } = use(params);
+
+
+  const { select, configuredWallets, detectedWallets } = useWallet();
+
+  const handleConnect = (walletInfo: any) => {
+
+    console.log(walletInfo.name);
+    select(walletInfo.name);
+
+  }
 
   // Credit card form state
   const [cardDetails, setCardDetails] = useState({
@@ -49,7 +71,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
         // Mock data for the listing
         setListing({
-          id: params.id,
+          id: id,
           name: "Netflix Premium",
           category: "Movies & TV",
           image: "/placeholder.svg?height=100&width=100",
@@ -68,21 +90,21 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
           description: "Failed to load the checkout details. Please try again.",
           variant: "destructive",
         })
-        router.push(`/marketplace/${params.id}`)
+        router.push(`/marketplace/${id}`)
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchListing()
-  }, [params.id, toast, router])
+  }, [id, toast, router])
 
   const handleCardDetailsChange = (field: string, value: string) => {
     setCardDetails((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async () => {
-    if (!user?.walletConnected && paymentMethod === "crypto") {
+    if (wallet.connected && paymentMethod === "crypto") {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to proceed with crypto payment.",
@@ -103,7 +125,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       })
 
       // Redirect to success page
-      router.push(`/checkout/success?id=${params.id}`)
+      router.push(`/checkout/success?id=${id}`)
     } catch (error) {
       toast({
         title: "Payment failed",
@@ -120,7 +142,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
     try {
       // Validate wallet connection
-      if (!user?.walletConnected) {
+      if (!wallet.connected) {
         toast({
           title: "Wallet not connected",
           description: "Please connect your wallet to complete this purchase.",
@@ -129,19 +151,21 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         setIsProcessing(false)
         return
       }
+      blockchainService.setWallet(wallet);
+
 
       // Connect the wallet to our blockchain service
-      blockchainService.connectWallet(user.walletAddress || "")
+      // blockchainService.connectWallet(wallet.address || "")
 
       // Join the subscription on the blockchain
       const selectedDuration = Number.parseInt(duration)
       const totalAmount = Number(total.toFixed(2))
 
-      const result = await blockchainService.joinSubscription(
+      const result = await blockchainService.purchaseSubscription(
         listing.subscriptionId,
         listing.platformId,
         selectedDuration,
-        totalAmount,
+        // totalAmount,
       )
 
       // Process payment and create the subscription
@@ -155,7 +179,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
       // Navigate to success page
       router.push(`/checkout/success?id=${listing.id}&txId=${result.txId}`)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Checkout error:", error)
       toast({
         title: "Checkout failed",
@@ -187,7 +211,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       <div className="mb-8">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
-            <Link href={`/marketplace/${params.id}`}>
+            <Link href={`/marketplace/${id}`}>
               <ArrowLeft className="h-4 w-4" />
               <span className="sr-only">Back to listing</span>
             </Link>
@@ -205,9 +229,8 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue={paymentMethod} onValueChange={(value) => setPaymentMethod(value)}>
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-1">
                   <TabsTrigger value="crypto">Cryptocurrency</TabsTrigger>
-                  <TabsTrigger value="card">Credit Card</TabsTrigger>
                 </TabsList>
                 <TabsContent value="crypto" className="space-y-6 pt-6">
                   <div className="rounded-lg border bg-muted/50 p-4">
@@ -223,7 +246,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                     </div>
                   </div>
 
-                  {user?.walletConnected ? (
+                  {wallet.connected ? (
                     <div className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -233,8 +256,8 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                           <div>
                             <p className="font-medium">Wallet Connected</p>
                             <p className="text-sm text-muted-foreground">
-                              {user.walletAddress?.substring(0, 6)}...
-                              {user.walletAddress?.substring(user.walletAddress.length - 4)}
+                              {wallet.address?.substring(0, 6)}...
+                              {wallet.address?.substring(wallet.address.length - 4)}
                             </p>
                           </div>
                         </div>
@@ -246,7 +269,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                       <p className="text-sm text-muted-foreground">
                         You need to connect a wallet to pay with cryptocurrency.
                       </p>
-                      <WalletConnect />
+                      {/* <WalletConnect /> */}
                     </div>
                   )}
 
@@ -308,68 +331,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="card" className="space-y-6 pt-6">
-                  <div className="rounded-lg border bg-muted/50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Lock className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                      <div className="text-sm">
-                        <p className="font-medium">Secure Payment</p>
-                        <p className="text-muted-foreground">
-                          Your payment information is encrypted and never stored on our servers. We use
-                          industry-standard security measures to protect your data.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="card-number">Card Number</Label>
-                      <Input
-                        id="card-number"
-                        placeholder="1234 5678 9012 3456"
-                        value={cardDetails.number}
-                        onChange={(e) => handleCardDetailsChange("number", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="card-name">Name on Card</Label>
-                      <Input
-                        id="card-name"
-                        placeholder="John Doe"
-                        value={cardDetails.name}
-                        onChange={(e) => handleCardDetailsChange("name", e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="card-expiry">Expiry Date</Label>
-                        <Input
-                          id="card-expiry"
-                          placeholder="MM/YY"
-                          value={cardDetails.expiry}
-                          onChange={(e) => handleCardDetailsChange("expiry", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="card-cvc">CVC</Label>
-                        <Input
-                          id="card-cvc"
-                          placeholder="123"
-                          value={cardDetails.cvc}
-                          onChange={(e) => handleCardDetailsChange("cvc", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      We accept Visa, Mastercard, and American Express
-                    </span>
-                  </div>
-                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>

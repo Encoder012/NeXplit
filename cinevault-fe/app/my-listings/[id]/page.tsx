@@ -31,38 +31,39 @@ const mockListing = {
   price: 17.99,
   duration: "6 months",
   status: "active",
-  activeSplits: 2,
+  activeSplits: 0,
   maxSplits: 4,
   views: 42,
   createdAt: "May 2, 2025",
   description: "Netflix Premium with 4K streaming on up to 4 devices simultaneously.",
-  earnings: 71.96,
+  earnings: 0,
   credentials: {
-    email: "encrypted-email@splitstream.com",
-    password: "encrypted-password",
+    email: "krishnaaggarwal012@gmail.com",
+    password: "12345678",
   },
-  splits: [
-    {
-      id: "split-1",
-      buyer: "Alex Johnson",
-      buyerWallet: "0x1a2b3c4d5e6f7g8h9i0j",
-      startDate: "May 5, 2025",
-      endDate: "August 5, 2025",
-      amount: 35.98,
-      status: "active",
-      progress: 33,
-    },
-    {
-      id: "split-2",
-      buyer: "Jamie Smith",
-      buyerWallet: "0x9i8h7g6f5e4d3c2b1a0",
-      startDate: "May 10, 2025",
-      endDate: "August 10, 2025",
-      amount: 35.98,
-      status: "active",
-      progress: 30,
-    },
-  ],
+  splits: [],
+  // splits: [
+  //   {
+  //     id: "split-1",
+  //     buyer: "Alex Johnson",
+  //     buyerWallet: "0x1a2b3c4d5e6f7g8h9i0j",
+  //     startDate: "May 5, 2025",
+  //     endDate: "August 5, 2025",
+  //     amount: 35.98,
+  //     status: "active",
+  //     progress: 33,
+  //   },
+  //   {
+  //     id: "split-2",
+  //     buyer: "Jamie Smith",
+  //     buyerWallet: "0x9i8h7g6f5e4d3c2b1a0",
+  //     startDate: "May 10, 2025",
+  //     endDate: "August 10, 2025",
+  //     amount: 35.98,
+  //     status: "active",
+  //     progress: 30,
+  //   },
+  // ],
   analytics: {
     viewsThisWeek: 12,
     viewsLastWeek: 8,
@@ -152,12 +153,11 @@ export default function ListingDetailsPage({ params }) {
                     </div>
                     <Badge
                       className={`
-                        ${
-                          listing.status === "active"
-                            ? "bg-neon-green/20 text-neon-green border-neon-green/30"
-                            : listing.status === "pending"
-                              ? "bg-orange-500/20 text-orange-500 border-orange-500/30"
-                              : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                        ${listing.status === "active"
+                          ? "bg-neon-green/20 text-neon-green border-neon-green/30"
+                          : listing.status === "pending"
+                            ? "bg-orange-500/20 text-orange-500 border-orange-500/30"
+                            : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                         } border
                       `}
                     >
